@@ -1,0 +1,14 @@
+{
+  "DATABASES": {
+    "default": {
+      "ENGINE": "",
+      "NAME": "",
+      "USER": "",
+      "PASSWORD": "",
+      "HOST": "",
+      "PORT": ""
+    }
+  },
+  "DEBUG": "",
+  "SECRET_KEY": ""
+}

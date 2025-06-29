@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [main, test, develop]
+  pull_request:
+    branches: [main, test, develop]
+
+jobs:
+  run_test:
+    name: Test & Coverage
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      issues: write 
+      pull-requests: write 
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install poetry
+        run: |
+          pip install poetry
+
+      - name: Cache virtual environment
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
+
+      - name: Set up virtual environment and install dependencies
+        run: |
+          if [ ! -d ".venv/bin" ]; then
+            python -m venv .venv
+            poetry install --no-root
+          fi
+          source .venv/bin/activate
+
+      - name: Run migrations
+        run: |
+          source .venv/bin/activate
+          python manage.py migrate
+
+      - name: Run tests with coverage
+        run: |
+          source .venv/bin/activate
+          coverage run manage.py test
+          coverage report
+          coverage xml
+
+      - name: Upload coverage.xml artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+      - name: Coverage Comment
+        if: github.event_name == 'pull_request'
+        uses: ewjoachim/coverage-comment-action@v1.0.3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERAGE_FILE: coverage.xml
+          BADGE_ENABLED: "true"
+          BADGE_FILENAME: coverage-comment-badge.json
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 50
+
+  run_lints:
+    name: Linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install poetry
+        run: |
+          pip install poetry
+
+      - name: Cache virtual environment
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
+
+      - name: Set up virtual environment and install dependencies
+        run: |
+          if [ ! -d ".venv/bin" ]; then
+            python -m venv .venv
+            poetry install --no-root
+          fi
+          source .venv/bin/activate
+      
+      - name: Run black
+        run: |
+          source .venv/bin/activate
+          black . --check --diff
+      
+      - name: Run isort
+        run: |
+          source .venv/bin/activate
+          isort . --check-only --diff
+
+      - name: Run flake
+        run: |
+          source .venv/bin/activate
+          flake8 .
+
+      - name: Run MyPy
+        run: |
+          source .venv/bin/activate
+          mypy .

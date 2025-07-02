@@ -14,7 +14,7 @@ class HealthCheckTests(TestCase):
         response = self.client.get(reverse("health_check"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @patch("api.views.connections")
+    @patch("technical.views.connections")
     def test_health_check_db_error(self, mock_connections: MagicMock) -> None:
         mock_conn = mock_connections.__getitem__.return_value
         mock_conn.cursor.side_effect = OperationalError("DB connection error")

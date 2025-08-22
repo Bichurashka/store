@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+    <form method = "POST">
+    {% csrf_token %}
+        <div class="mb-3">
+            <label for="exampleName" class="form-label">Name</label>
+            <input type="text" class="form-control" id="exampleName" name="name">
+        </div>
+        <div class="mb-3">
+            <label for="exampleUsername" class="form-label">Username</label>
+            <input type="text" class="form-control" id="exampleUsername" name="username">
+        </div>
+        <div class="mb-3">
+            <label for="exampleEmail" class="form-label">Email</label>
+            <input type="text" class="form-control" id="exampleEmail" name="email">
+        </div>
+        <div class="mb-3">
+            <label for="exampleInputPassword1" class="form-label">Password</label>
+            <input type="password" class="form-control" id="exampleInputPassword1" name="password1">
+        </div>
+        <div class="mb-3">
+            <label for="exampleInputPassword2" class="form-label">Confirm password</label>
+            <input type="password" class="form-control" id="exampleInputPassword2" name="password2">
+        </div>
+        <div class="mb-3">
+            <label for="examplePhone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="examplePhone" name="phone">
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+{% endblock %}

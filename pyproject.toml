@@ -11,6 +11,7 @@ dependencies = [
     "django (>=5.2.3,<6.0.0)",
     "djangorestframework (>=3.16.0,<4.0.0)",
     "psycopg2 (>=2.9.10,<3.0.0)",
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
 ]
 
 
@@ -24,11 +25,18 @@ flake8 = "^7.3.0"
 isort = "^6.0.1"
 mypy = "^1.16.1"
 coverage = "^7.9.1"
+django-stubs = "^5.2.2"
 
 [tool.coverage.run]
 branch = true
 omit = [
     "manage.py",
+    "asgi.py",
+    "wsgi.py",
+    "settings.py",
+    "*/migrations/*",
+    "*/tests/*",
+    "*/urls*",
 ]
 
 [tool.black]

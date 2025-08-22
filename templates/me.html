@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+    <form>
+        <dl class="row">
+            <dt class="col-sm-1">Username</dt>
+            <dd class="col-sm-11">{{ user.username }}</dd>
+
+            <dt class="col-sm-1">Name</dt>
+            <dd class="col-sm-11">{{ user.name }}</dd>
+
+            <dt class="col-sm-1">Email</dt>
+            <dd class="col-sm-11">{{ user.email }}</dd>
+
+            <dt class="col-sm-1">Groups</dt>
+            <dd class="col-sm-11">{{ user.groups.all }}</dd>
+
+            <dt class="col-sm-1">Last login</dt>
+            <dd class="col-sm-11">{{ user.last_login }}</dd>
+        </dl>
+    </form>
+{% endblock %}

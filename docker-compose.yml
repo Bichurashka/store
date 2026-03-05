@@ -1,0 +1,36 @@
+networks:
+  postgres_scheduler:
+
+services:
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - postgres_scheduler
+
+  celery:
+    build: .
+    command: celery -A mysite worker -l info
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=mysite.settings
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    networks:
+      - postgres_scheduler
+
+  celery-beat:
+    build: .
+    command: celery -A mysite beat -l info
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=mysite.settings
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    networks:
+      - postgres_scheduler

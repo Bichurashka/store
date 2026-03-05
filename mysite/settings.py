@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import json
 import os.path
+from datetime import timedelta
 from pathlib import Path
 
 try:
@@ -43,15 +44,13 @@ DJANGO_APPS = [
     "django.contrib.staticfiles",
 ]
 
-THIRD_PARTY_APPS = [
-    "rest_framework",
-    "rest_framework_simplejwt",
-]
+THIRD_PARTY_APPS = ["rest_framework", "rest_framework_simplejwt", "django_celery_beat"]
 
 PROJECT_APPS = [
     "technical.apps.TechnicalConfig",
     "goods.apps.GoodsConfig",
     "users.apps.UsersConfig",
+    "core",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -89,6 +88,21 @@ REST_FRAMEWORK = {
     ],
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=config.get("ACCESS_TOKEN_LIFETIME", 3600)),
+}
+
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:6379/0"
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:6379/1"
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_TIMEZONE = "Europe/Moscow"
+
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
 WSGI_APPLICATION = "mysite.wsgi.application"
 
 # Database
@@ -102,7 +116,7 @@ DATABASES = config.get(
             "NAME": "test",
             "USER": "test",
             "PASSWORD": "test",
-            "HOST": "localhost",
+            "HOST": "host.docker.internal",
             "PORT": "5432",
         }
     },

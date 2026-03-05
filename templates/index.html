@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+
+<!-- Кнопка открытия offcanvas -->
+<button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#categoriesOffcanvas">
+  Категории
+</button>
+
+<!-- Offcanvas -->
+<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="categoriesOffcanvas">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">Категории</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <ul class="list-unstyled mb-0 ps-2">
+      {% for lvl1 in categories %}
+        <li class="mb-1">
+          {% if lvl1.children %}
+            <a class="d-block text-white bg-secondary rounded px-2 py-1 mb-1 text-decoration-none"
+               data-bs-toggle="collapse" href="#collapse1-{{ forloop.counter }}">
+              {{ lvl1.name }}
+            </a>
+            <ul class="collapse list-unstyled ps-3 mb-1" id="collapse1-{{ forloop.counter }}">
+              {% for lvl2 in lvl1.children %}
+                <li class="mb-1">
+                  {% if lvl2.children %}
+                    <a class="d-block text-white bg-secondary rounded px-2 py-1 mb-1 text-decoration-none"
+                       data-bs-toggle="collapse" href="#collapse2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                      {{ lvl2.name }}
+                    </a>
+                    <ul class="collapse list-unstyled ps-3 mb-1" id="collapse2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                      {% for lvl3 in lvl2.children %}
+                        <li>
+                          <a class="d-block text-white bg-dark rounded px-2 py-1 mb-1 text-decoration-none"
+                             href="?category={{ lvl3.id }}">
+                            {{ lvl3.name }}
+                          </a>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <a class="d-block text-white bg-dark rounded px-2 py-1 mb-1 text-decoration-none"
+                       href="?category={{ lvl2.id }}">
+                      {{ lvl2.name }}
+                    </a>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <a class="d-block text-white bg-dark rounded px-2 py-1 mb-1 text-decoration-none"
+               href="?category={{ lvl1.id }}">
+              {{ lvl1.name }}
+            </a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<!-- Отображение товаров -->
+<div class="container mt-4">
+  <h3 class="text-white mb-3">
+    {% if selected_category %}
+      Товары категории: {{ selected_category.name }}
+    {% else %}
+      Все товары
+    {% endif %}
+  </h3>
+  <div class="row">
+    {% for item in products %}
+      <div class="col-md-4 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">{{ item.name }}</h5>
+            <p class="card-text">Цена: {{ item.price }}</p>
+            {% if item.description %}
+              <p class="card-text">{{ item.description }}</p>
+            {% endif %}
+            <p class="card-text"><small class="text-muted">SKU: {{ item.sku }}</small></p>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-white">Товары не найдены.</p>
+    {% endfor %}
+  </div>
+</div>
+
+
+
+<ul>
+    {% for lvl1 in categories %}
+    <li>
+        {{ lvl1.name }}
+        {% if lvl1.children %}
+        <ul>
+            {% for lvl2 in lvl1.children %}
+            <li>
+                {{ lvl2.name }}
+                {% if lvl2.children %}
+                <ul>
+                    {% for lvl3 in lvl2.children %}
+                    <li>
+                        {{ lvl3.name }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+
+<!--<div class="row row-cols-1 row-cols-md-2 g-4">-->
+<!--    {% for goods in goods %}-->
+<!--    <div class="col">-->
+<!--        <div class="card">-->
+<!--            <img src="..." class="card-img-top" alt="...">-->
+<!--            <div class="card-body">-->
+<!--                <h5 class="card-title">{{ goods.name }}</h5>-->
+<!--                <p> id: {{ goods.id }} </p>-->
+<!--                <p> name: {{ goods.name }} </p>-->
+<!--                <p> price: {{ goods.price }} </p>-->
+<!--                <p> description: {{ goods.description }} </p>-->
+<!--                <p> sku: {{ goods.sku }} </p>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--    {% endfor %}-->
+<!--</div>-->
+{% endblock %}

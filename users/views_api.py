@@ -15,7 +15,7 @@ def me_view(request: Request) -> Response:
     return Response(serializer.data)
 
 
-class CreateView(APIView):
+class CreateUserView(APIView):
     permission_classes = (IsAdminUser,)
 
     def post(self, request: Request) -> Response:

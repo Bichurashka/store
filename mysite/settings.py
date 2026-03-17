@@ -50,7 +50,6 @@ PROJECT_APPS = [
     "technical.apps.TechnicalConfig",
     "goods.apps.GoodsConfig",
     "users.apps.UsersConfig",
-    "core",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS

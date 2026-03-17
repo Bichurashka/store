@@ -59,7 +59,7 @@ class CategoryRequestsService:
         serializer = CategoryCreationSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return {"data": serializer.validated_data, "status": status.HTTP_201_CREATED}
+            return {"data": serializer.data, "status": status.HTTP_201_CREATED}
         return {"data": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}
 
     def category_put(self, request: Request) -> dict:
@@ -164,7 +164,7 @@ class OrdersServices:
         serializer = OrderCreationSerializer(data=data)
         serializer.is_valid()
         serializer.save(user=request.user)
-        return {"data": serializer.validated_data, "status": status.HTTP_201_CREATED}
+        return {"data": serializer.data, "status": status.HTTP_201_CREATED}
 
     def get_or_create_order(self, request: Request) -> Orders:
         try:

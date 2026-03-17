@@ -42,22 +42,22 @@ class CategoryPUTSerializationTests(TestCase):
         serializer = CategoryPUTSerializer(instance=self.child, data=data)
         self.assertTrue(serializer.is_valid())
         serializer.save()
-        self.assertEqual(serializer.data["name"], data["name"])
-        self.assertEqual(serializer.data["parent"], data["parent"])
+        self.assertEqual(serializer.validated_data["name"], data["name"])
+        self.assertEqual(serializer.validated_data["parent"].pk, data["parent"])
 
     def test_serialization_without_args(self) -> None:
         data = {"name": "Child"}
         serializer = CategoryPUTSerializer(instance=self.child, data=data)
         self.assertTrue(serializer.is_valid())
         serializer.save()
-        self.assertEqual(serializer.data["parent"], None)
+        self.assertNotEqual("parent", serializer.validated_data)
 
     def test_serialization_with_none_args(self) -> None:
         data = {"name": "Child", "parent": None}
         serializer = CategoryPUTSerializer(instance=self.child, data=data)
         self.assertTrue(serializer.is_valid())
         serializer.save()
-        self.assertEqual(serializer.data["parent"], None)
+        self.assertEqual(serializer.validated_data["parent"], None)
 
 
 class ItemsPUTSerializationTests(TestCase):
@@ -85,16 +85,16 @@ class ItemsPUTSerializationTests(TestCase):
         serializer = ItemsPUTSerializer(instance=self.item, data=data)
         self.assertTrue(serializer.is_valid())
         serializer.save()
-        self.assertEqual(serializer.data["description"], "321")
-        self.assertEqual(serializer.data["category"], self.category2.pk)
+        self.assertEqual(serializer.validated_data["description"], "321")
+        self.assertEqual(serializer.validated_data["category"], self.category2)
 
     def test_serialization_without_args(self) -> None:
         data = {"name": "Item1", "base_price": 100, "price": 100, "sku": "1"}
         serializer = ItemsPUTSerializer(instance=self.item, data=data)
         self.assertTrue(serializer.is_valid())
         serializer.save()
-        self.assertEqual(serializer.data["description"], None)
-        self.assertEqual(serializer.data["category"], None)
+        self.assertNotIn("description", serializer.validated_data)
+        self.assertNotIn("category", serializer.validated_data)
 
     def test_serialization_with_none_args(self) -> None:
         data = {
@@ -108,5 +108,5 @@ class ItemsPUTSerializationTests(TestCase):
         serializer = ItemsPUTSerializer(instance=self.item, data=data)
         self.assertTrue(serializer.is_valid())
         serializer.save()
-        self.assertEqual(serializer.data["description"], None)
-        self.assertEqual(serializer.data["category"], None)
+        self.assertEqual(serializer.validated_data["description"], None)
+        self.assertEqual(serializer.validated_data["category"], None)

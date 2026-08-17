@@ -2,6 +2,17 @@ networks:
   postgres_scheduler:
 
 services:
+  postgres:
+    image: postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres_scheduler
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
   redis:
     image: redis
     ports:
@@ -14,6 +25,8 @@ services:
     command: celery -A mysite worker -l info
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DJANGO_SETTINGS_MODULE=mysite.settings
       - REDIS_HOST=redis
@@ -27,10 +40,33 @@ services:
     command: celery -A mysite beat -l info
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DJANGO_SETTINGS_MODULE=mysite.settings
       - REDIS_HOST=redis
     depends_on:
       - redis
+    networks:
+      - postgres_scheduler
+
+  django:
+    build: .
+
+    command: python manage.py runserver 0.0.0.0:8000
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - .:/app
+
+    env_file:
+      - .env
+
+    depends_on:
+      - postgres
+      - redis
+
     networks:
       - postgres_scheduler

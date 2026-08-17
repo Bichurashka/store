@@ -5,3 +5,4 @@ settings.json
 .python-version
 htmlcov
 .coverage
+.env

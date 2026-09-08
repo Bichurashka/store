@@ -10,15 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import json
-import os.path
+import os
 from datetime import timedelta
 from pathlib import Path
-
-try:
-    config = json.load(open("settings.json", "r"))
-except FileNotFoundError:
-    config = {}
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,10 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config.get("SECRET_KEY", "test")
+SECRET_KEY = os.environ.get("SECRET_KEY", "test")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config.get("DEBUG", True)
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS: list[str] = []
 
@@ -50,7 +44,6 @@ PROJECT_APPS = [
     "technical.apps.TechnicalConfig",
     "goods.apps.GoodsConfig",
     "users.apps.UsersConfig",
-    "core",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -89,7 +82,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=config.get("ACCESS_TOKEN_LIFETIME", 3600)),
+    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=int(os.environ.get("ACCESS_TOKEN_LIFETIME", 3600))),
 }
 
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
@@ -108,19 +101,16 @@ WSGI_APPLICATION = "mysite.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = config.get(
-    "DATABASES",
-    {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": "test",
-            "USER": "test",
-            "PASSWORD": "test",
-            "HOST": "host.docker.internal",
-            "PORT": "5432",
-        }
-    },
-)
+DATABASES = {
+    "default": {
+        "ENGINE": os.environ.get("DB_ENGINE", "django.db.backends.postgresql"),
+        "NAME": os.environ.get("POSTGRES_DB", "test"),
+        "USER": os.environ.get("POSTGRES_USER", "test"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

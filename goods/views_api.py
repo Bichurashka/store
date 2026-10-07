@@ -60,7 +60,7 @@ def one_category_view(request: Request, cat_id: int) -> Response:
         serializer = CategoryCreationSerializer(instance=cat, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(ResponseWrapper(data=serializer.data).model_dump())
+            return Response(ResponseWrapper(data=serializer.validated_data).model_dump())
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -97,7 +97,7 @@ def one_item_view(request: Request, item_id: int) -> Response:
         serializer = ItemsCreationSerializer(instance=item, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(ResponseWrapper(data=serializer.data).model_dump())
+            return Response(ResponseWrapper(data=serializer.validated_data).model_dump())
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

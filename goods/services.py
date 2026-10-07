@@ -1,7 +1,10 @@
+from typing import Any, Dict
+
 from django.db.models import Q, QuerySet
 from pydantic import ValidationError
 from rest_framework import status
 from rest_framework.request import Request
+from rest_framework.serializers import Serializer
 
 from goods.models import Category, Items, OrderItems, Orders
 from goods.schemas import CategoryFields, ItemsFields
@@ -33,6 +36,13 @@ class CategoryServices:
         return Category.objects.filter(q).order_by(sort_type)
 
 
+def get_data_from_serializer_categories(serializer: Serializer) -> Dict[str, Any]:
+    data: Dict[str, Any] = serializer.validated_data.copy()
+    parent = serializer.validated_data.get("parent")
+    data["parent"] = parent.pk if parent else None
+    return data
+
+
 class CategoryRequestsService:
     def category_get(self, request: Request) -> dict:
         if request.GET.get("search_fields") and request.GET.get("search_data"):
@@ -59,7 +69,8 @@ class CategoryRequestsService:
         serializer = CategoryCreationSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return {"data": serializer.validated_data, "status": status.HTTP_201_CREATED}
+            data = get_data_from_serializer_categories(serializer)
+            return {"data": data, "status": status.HTTP_201_CREATED}
         return {"data": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}
 
     def category_put(self, request: Request) -> dict:
@@ -78,7 +89,8 @@ class CategoryRequestsService:
                 )
                 if serializer.is_valid():
                     serializer.save()
-                    return {"data": serializer.data, "status": status.HTTP_200_OK}
+                    data = get_data_from_serializer_categories(serializer)
+                    return {"data": data, "status": status.HTTP_200_OK}
                 return {"data": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}
         return {"data": {"details": "Category not found"}, "status": status.HTTP_404_NOT_FOUND}
 
@@ -97,6 +109,15 @@ class ItemsServices:
             q |= Q(**{f"{field}__icontains": search_data})
 
         return Items.objects.filter(q).order_by(sort_type)
+
+
+def get_data_from_serializer_items(serializer: Serializer) -> Dict[str, Any]:
+    data: Dict[str, Any] = serializer.validated_data.copy()
+    category = serializer.validated_data.get("category")
+    data["category"] = category.pk if category else None
+    description = serializer.validated_data.get("description")
+    data["description"] = description if description else None
+    return data
 
 
 class ItemsRequestsServices:
@@ -125,7 +146,8 @@ class ItemsRequestsServices:
         serializer = ItemsCreationSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return {"data": serializer.data, "status": status.HTTP_201_CREATED}
+            data = get_data_from_serializer_items(serializer)
+            return {"data": data, "status": status.HTTP_201_CREATED}
         return {"data": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}
 
     def items_put(self, request: Request) -> dict:
@@ -139,7 +161,8 @@ class ItemsRequestsServices:
                 serializer = ItemsPUTSerializer(instance=item, data=request.data, partial=False)
                 if serializer.is_valid():
                     serializer.save()
-                    return {"data": serializer.data, "status": status.HTTP_200_OK}
+                    data = get_data_from_serializer_items(serializer)
+                    return {"data": data, "status": status.HTTP_200_OK}
                 return {"data": serializer.errors, "status": status.HTTP_400_BAD_REQUEST}
         return {"data": {"details": "Item not found"}, "status": status.HTTP_404_NOT_FOUND}
 

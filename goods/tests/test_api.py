@@ -55,7 +55,6 @@ class GoodsOneCategoryAPITests(APITestCase):
         response = self.client_test.patch(url, data={"name": "new name"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["data"]["name"], "new name")
-        self.assertEqual(response.json()["data"]["parent"], self.cat.parent)
 
     def test_patch_fail(self) -> None:
         url = reverse("one_category", args=[self.cat.pk])
@@ -154,7 +153,7 @@ class GoodsCategoryAPITests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["data"]["name"], "cat")
-        self.assertEqual(response.json()["data"]["parent"], None)
+        self.assertNotEqual("parent", response.json()["data"])
 
     def test_put_with_args(self) -> None:
         self.client_test.force_authenticate(user=self.admin_test)

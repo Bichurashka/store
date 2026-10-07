@@ -131,6 +131,7 @@ class GoodsCategoryAPITests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         cat = Category.objects.get(name="cat")
+        self.assertEqual(response.json()["data"]["id"], cat.pk)
         self.assertEqual(cat.parent, self.parent)
         self.assertEqual(str(cat), cat.name)
 
@@ -333,6 +334,7 @@ class GoodsItemsAPITests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         item = Items.objects.get(name="item2")
+        self.assertEqual(response.json()["data"]["id"], item.pk)
         self.assertEqual(item.name, "item2")
         self.assertEqual(item.sku, "2")
 
@@ -486,7 +488,7 @@ class GoodsOneOrderAPITests(APITestCase):
         self.client_test.force_authenticate(user=self.user_test)
         response = self.client_test.get(reverse("one_order"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()["data"]["price"], "0.00")
+        self.assertEqual(response.json()["data"]["price"], 0)
         self.assertEqual(response.json()["data"]["status"], "Pending")
 
 

@@ -63,7 +63,7 @@ class CategoryServices:
 
 
 def get_data_from_serializer_categories(serializer: Serializer) -> Dict[str, Any]:
-    data: Dict[str, Any] = serializer.validated_data.copy()
+    data: Dict[str, Any] = {"id": serializer.instance.pk, **serializer.validated_data}
     parent = serializer.validated_data.get("parent")
     data["parent"] = parent.pk if parent else None
     return data
@@ -136,7 +136,7 @@ class ItemsServices:
 
 
 def get_data_from_serializer_items(serializer: Serializer) -> Dict[str, Any]:
-    data: Dict[str, Any] = serializer.validated_data.copy()
+    data: Dict[str, Any] = {"id": serializer.instance.pk, **serializer.validated_data}
     category = serializer.validated_data.get("category")
     data["category"] = category.pk if category else None
     description = serializer.validated_data.get("description")

@@ -127,6 +127,11 @@ class OrdersQueriesTests(TestCase):
             response = self.client_test.post(reverse("order_items"), {"item": item.pk, "amount": 1})
         self.assertEqual(response.status_code, 200)
 
+    def test_prices_are_numbers(self) -> None:
+        order = self.client_test.get(reverse("orders")).json()["data"][0]
+        self.assertEqual(order["price"], 30)
+        self.assertEqual(order["items"][0]["item"]["price"], 10)
+
     def test_orders_list_pagination(self) -> None:
         response = self.client_test.get(reverse("orders"), {"limit": 2, "offset": 1})
         self.assertEqual([o["status"] for o in response.json()["data"]], ["Shipped", "Paid"])

@@ -89,10 +89,10 @@ class CustomUserCreationSerializer(serializers.ModelSerializer):
             phone=validated_data["phone"],
             password=validated_data["password2"],
         )
-        if "admin" in validated_data and validated_data["admin"]:
+        if validated_data.get("admin"):
             user.groups.add(Group.objects.get(name="admins"))
             user.is_staff = True
-            user.save()
+            user.save(update_fields=["is_staff"])
         else:
             user.groups.add(Group.objects.get(name="clients"))
         return user

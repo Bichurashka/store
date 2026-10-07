@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+from django.db import IntegrityError, transaction
 from django.db.models import Q, QuerySet
 from pydantic import ValidationError
 from rest_framework import status
@@ -19,14 +20,39 @@ from goods.serializers import (
     OrderSerializer,
 )
 
+MAX_PAGE_LIMIT = 100
+
+
+def _allowed_sorts(model: Any) -> frozenset[str]:
+    fields = [f.name for f in model._meta.get_fields() if not f.is_relation]
+    return frozenset(fields + [f"-{el}" for el in fields])
+
+
+CATEGORY_ALLOWED_SORTS = _allowed_sorts(Category)
+ITEMS_ALLOWED_SORTS = _allowed_sorts(Items)
+
+
+def paginate(queryset: QuerySet, request: Request) -> QuerySet:
+    """Apply optional ?limit=&offset= to the queryset; without limit the whole list is returned."""
+    try:
+        limit = int(request.GET["limit"])
+    except (KeyError, ValueError):
+        return queryset
+    try:
+        offset = int(request.GET.get("offset", 0))
+    except ValueError:
+        offset = 0
+    limit = min(max(limit, 0), MAX_PAGE_LIMIT)
+    offset = max(offset, 0)
+    end = offset + limit
+    return queryset[offset:end]
+
 
 class CategoryServices:
     def search_category(
         self, search_fields: CategoryFields, search_data: str, sort_type: str = "id"
     ) -> QuerySet:
-        allowed_sorts = [f.name for f in Category._meta.get_fields() if not f.is_relation]
-        allowed_sorts = allowed_sorts + [f"-{el}" for el in allowed_sorts]
-        if sort_type not in allowed_sorts:
+        if sort_type not in CATEGORY_ALLOWED_SORTS:
             sort_type = "id"
 
         q = Q()
@@ -58,11 +84,11 @@ class CategoryRequestsService:
                 )
             except ValidationError:
                 return {"data": {}, "status": status.HTTP_400_BAD_REQUEST}
-            serializer = CategorySerializer(fields, many=True)
+            serializer = CategorySerializer(paginate(fields, request), many=True)
             return {"data": serializer.data, "status": status.HTTP_200_OK}
         else:
             cat = Category.objects.filter(parent=None).order_by("id")
-            serializer = CategorySerializer(cat, many=True)
+            serializer = CategorySerializer(paginate(cat, request), many=True)
             return {"data": serializer.data, "status": status.HTTP_200_OK}
 
     def category_post(self, request: Request) -> dict:
@@ -99,9 +125,7 @@ class ItemsServices:
     def search_items(
         self, search_fields: ItemsFields, search_data: str, sort_type: str = "id"
     ) -> QuerySet:
-        allowed_sorts = [f.name for f in Items._meta.get_fields() if not f.is_relation]
-        allowed_sorts = allowed_sorts + [f"-{el}" for el in allowed_sorts]
-        if sort_type not in allowed_sorts:
+        if sort_type not in ITEMS_ALLOWED_SORTS:
             sort_type = "id"
 
         q = Q()
@@ -135,11 +159,11 @@ class ItemsRequestsServices:
                 )
             except ValidationError:
                 return {"data": {}, "status": status.HTTP_400_BAD_REQUEST}
-            serializer = ItemsSerializer(fields, many=True)
+            serializer = ItemsSerializer(paginate(fields, request), many=True)
             return {"data": serializer.data, "status": status.HTTP_200_OK}
         else:
             items = Items.objects.all().order_by("id")
-            serializer = ItemsSerializer(items, many=True)
+            serializer = ItemsSerializer(paginate(items, request), many=True)
             return {"data": serializer.data, "status": status.HTTP_200_OK}
 
     def items_post(self, request: Request) -> dict:
@@ -172,30 +196,45 @@ class ItemsRequestsServices:
 
 class OrdersServices:
     def orders_get(self, request: Request) -> dict:
-        orders = Orders.objects.filter(user_id=request.user.id).order_by("id")
-        serializer = OrderSerializer(orders, many=True)
+        orders = (
+            Orders.objects.filter(user_id=request.user.id)
+            .prefetch_related("items__item")
+            .order_by("id")
+        )
+        serializer = OrderSerializer(paginate(orders, request), many=True)
         return {"data": serializer.data, "status": status.HTTP_200_OK}
 
     def orders_post(self, request: Request) -> dict:
-        pending_order = Orders.objects.filter(user_id=request.user.id).filter(status="Pending")
-        if pending_order:
-            return {
-                "data": {"details": "You already have a pending order"},
-                "status": status.HTTP_400_BAD_REQUEST,
-            }
+        already_pending = {
+            "data": {"details": "You already have a pending order"},
+            "status": status.HTTP_400_BAD_REQUEST,
+        }
+        pending_order = Orders.objects.filter(
+            user_id=request.user.id, status=Orders.OrderStatus.PENDING
+        )
+        if pending_order.exists():
+            return already_pending
         data = {"status": "Pending", "price": 0}
         serializer = OrderCreationSerializer(data=data)
-        serializer.is_valid()
-        serializer.save(user=request.user)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                serializer.save(user=request.user)
+        except IntegrityError:
+            # a concurrent request created the pending order first (orders_one_pending_per_user)
+            return already_pending
         return {"data": serializer.validated_data, "status": status.HTTP_201_CREATED}
 
-    def get_or_create_order(self, request: Request) -> Orders:
-        try:
-            order = Orders.objects.filter(user_id=request.user.id).get(status="Pending")
-            return order
-        except Orders.DoesNotExist:
-            data = {"status": "Pending", "price": 0, "user_id": request.user.id}
-            return Orders.objects.create(**data)
+    def get_or_create_order(self, request: Request, with_items: bool = False) -> Orders:
+        queryset = Orders.objects.all()
+        if with_items:
+            queryset = queryset.prefetch_related("items__item")
+        order, _ = queryset.get_or_create(
+            user_id=request.user.id,
+            status=Orders.OrderStatus.PENDING,
+            defaults={"price": 0},
+        )
+        return order
 
 
 # OrderItems
@@ -203,9 +242,7 @@ class OrdersServices:
 
 class OrderItemsServices:
     def get_or_create_order_items(self, item_id: int, order_id: int) -> OrderItems:
-        try:
-            order_items = OrderItems.objects.get(item=item_id, order=order_id)
-            return order_items
-        except OrderItems.DoesNotExist:
-            data = {"order_id": order_id, "item_id": item_id, "amount": 0}
-            return OrderItems.objects.create(**data)
+        order_items, _ = OrderItems.objects.select_for_update().get_or_create(
+            item_id=item_id, order_id=order_id, defaults={"amount": 0}
+        )
+        return order_items

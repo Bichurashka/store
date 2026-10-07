@@ -90,51 +90,22 @@
       <p class="text-white">Товары не найдены.</p>
     {% endfor %}
   </div>
+  {% if products.has_other_pages %}
+  <nav>
+    <ul class="pagination">
+      {% if products.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if selected_category %}category={{ selected_category.id }}&{% endif %}page={{ products.previous_page_number }}">&laquo;</a>
+        </li>
+      {% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ products.number }} / {{ products.paginator.num_pages }}</span></li>
+      {% if products.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if selected_category %}category={{ selected_category.id }}&{% endif %}page={{ products.next_page_number }}">&raquo;</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
 </div>
-
-
-
-<ul>
-    {% for lvl1 in categories %}
-    <li>
-        {{ lvl1.name }}
-        {% if lvl1.children %}
-        <ul>
-            {% for lvl2 in lvl1.children %}
-            <li>
-                {{ lvl2.name }}
-                {% if lvl2.children %}
-                <ul>
-                    {% for lvl3 in lvl2.children %}
-                    <li>
-                        {{ lvl3.name }}
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-    </li>
-    {% endfor %}
-</ul>
-
-<!--<div class="row row-cols-1 row-cols-md-2 g-4">-->
-<!--    {% for goods in goods %}-->
-<!--    <div class="col">-->
-<!--        <div class="card">-->
-<!--            <img src="..." class="card-img-top" alt="...">-->
-<!--            <div class="card-body">-->
-<!--                <h5 class="card-title">{{ goods.name }}</h5>-->
-<!--                <p> id: {{ goods.id }} </p>-->
-<!--                <p> name: {{ goods.name }} </p>-->
-<!--                <p> price: {{ goods.price }} </p>-->
-<!--                <p> description: {{ goods.description }} </p>-->
-<!--                <p> sku: {{ goods.sku }} </p>-->
-<!--            </div>-->
-<!--        </div>-->
-<!--    </div>-->
-<!--    {% endfor %}-->
-<!--</div>-->
 {% endblock %}

@@ -1,11 +1,16 @@
+# Separate project name, host ports, network and volume, so this stack can run
+# alongside the old project at the same time. Ports inside the network are unchanged.
+name: aitesting
+
 networks:
   postgres_scheduler:
+    name: aitesting_postgres_scheduler
 
 services:
   postgres:
     image: postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
     networks:
       - postgres_scheduler
     environment:
@@ -34,7 +39,7 @@ services:
   redis:
     image: redis
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6380}:6379"
     networks:
       - postgres_scheduler
 
@@ -78,7 +83,7 @@ services:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
     ports:
-      - "8000:8000"
+      - "${DJANGO_HOST_PORT:-8001}:8000"
     volumes:
       - .:/app
     env_file:
@@ -93,3 +98,4 @@ services:
 
 volumes:
   store_postgres_data:
+    name: aitesting_store_postgres_data

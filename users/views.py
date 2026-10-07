@@ -43,13 +43,9 @@ def create_view(request: WSGIRequest) -> HttpResponse:
     form = RegistrationForm(request.POST or None)
     if request.method == "POST":
         if form.is_valid():
+            is_admin = request.POST.get("admin_group") == "on"
             user = form.save(commit=False)
-            if request.POST.get("admin_group") == "on":
-                user.is_staff = True
+            user.is_staff = is_admin
             user.save()
-            if request.POST.get("admin_group") == "on":
-                user.groups.add(Group.objects.get(name="admins"))
-            else:
-                user.groups.add(Group.objects.get(name="clients"))
-            user.save()
+            user.groups.add(Group.objects.get(name="admins" if is_admin else "clients"))
     return render(request, "create.html", {"form": form})

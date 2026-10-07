@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, cast
 
 from rest_framework import serializers
@@ -39,9 +40,21 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ["id", "name", "parent", "children"]
 
+    def _children_map(self) -> dict[int | None, list[Category]]:
+        # Load the whole category tree with a single query and share it between nested serializers
+        children_map = self.context.get("children_map")
+        if children_map is None:
+            children_map = defaultdict(list)
+            for cat in Category.objects.only("id", "name", "parent_id").order_by("id"):
+                children_map[cat.parent_id].append(cat)
+            self.context["children_map"] = children_map
+        return cast(dict[int | None, list[Category]], children_map)
+
     def get_children(self, obj: Category) -> list[dict[str, Any]]:
-        queryset = Category.objects.filter(parent=obj)
-        return cast(list[dict[str, Any]], CategorySerializer(queryset, many=True).data)
+        children_map = self._children_map()
+        children = children_map.get(obj.pk, [])
+        serializer = CategorySerializer(children, many=True, context=self.context)
+        return cast(list[dict[str, Any]], serializer.data)
 
 
 # Items
@@ -99,6 +112,9 @@ class OrderItemsCreationSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItems
         fields = "__all__"
+        # (order, item) uniqueness is enforced by the DB constraint; the auto-generated validator
+        # would load the related item and run an extra query on every amount update
+        validators: list = []
 
 
 class OrderItemsInputSerializer(serializers.Serializer):

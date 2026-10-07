@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -109,6 +110,9 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "test"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
+        # Reuse DB connections between requests instead of reconnecting every time
+        "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", 60)),
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
@@ -130,6 +134,10 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+# Fast (insecure) hashing speeds up tests that create users; never used outside of tests
+if sys.argv[1:2] == ["test"]:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

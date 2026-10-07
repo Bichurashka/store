@@ -4,63 +4,95 @@ from decimal import Decimal
 from celery import shared_task
 from django.utils import timezone
 
-from .models import Discounts, Items
+from .models import Category, Discounts, Items
+
+BATCH_SIZE = 1000
 
 
-def collect_items_discounts() -> dict:
+def _category_ancestors() -> dict[int, list[int]]:
+    """Map category id -> [id, parent id, grandparent id, ...] built from a single query"""
+    parents: dict[int, int | None] = dict(Category.objects.values_list("id", "parent_id"))
+    ancestors: dict[int, list[int]] = {}
+
+    def resolve(cat_id: int) -> list[int]:
+        chain: list[int] = []
+        current: int | None = cat_id
+        while current is not None and current not in ancestors:
+            if current in chain:  # protect from cycles in parent links
+                break
+            chain.append(current)
+            current = parents.get(current)
+        tail = ancestors[current] if current is not None and current in ancestors else []
+        # memoize every category on the chain
+        for i, node in enumerate(chain):
+            ancestors[node] = chain[i:] + tail
+        return ancestors[cat_id]
+
+    for cat_id in parents:
+        resolve(cat_id)
+    return ancestors
+
+
+def _discounts_by_category() -> dict[int, list[dict]]:
     now = timezone.now()
-
     discounts = Discounts.objects.filter(
         start_datetime__lte=now,
         end_datetime__gte=now,
-    ).select_related("category")
+    ).values("category_id", "type", "amount")
 
-    discounts_by_category = defaultdict(list)
+    result = defaultdict(list)
     for discount in discounts:
-        discounts_by_category[discount.category.id].append(
+        result[discount["category_id"]].append(
             {
-                "type": discount.type,
-                "amount": discount.amount,
+                "type": discount["type"],
+                "amount": discount["amount"],
             }
         )
-
-    items = Items.objects.select_related("category")
-
-    result = {}
-
-    for item in items:
-        category = item.category
-        item_discounts = []
-
-        while category:
-            item_discounts.extend(discounts_by_category.get(category.id, []))
-            category = category.parent
-
-        result[item.pk] = item_discounts
-
     return result
+
+
+def _item_discounts(
+    category_id: int | None,
+    ancestors: dict[int, list[int]],
+    discounts_by_category: dict[int, list[dict]],
+) -> list[dict]:
+    item_discounts = []
+    for cat_id in ancestors.get(category_id, []) if category_id is not None else []:
+        item_discounts.extend(discounts_by_category.get(cat_id, []))
+    return item_discounts
+
+
+def calculate_price(base_price: Decimal, discounts: list[dict]) -> Decimal:
+    fixed_sum = Decimal("0")
+    percentage_max = Decimal("0")
+
+    for discount in discounts:
+        if discount["type"] == Discounts.DiscountType.FIXED:
+            fixed_sum += discount["amount"]
+        else:  # Discounts.DiscountType.PERCENTAGE
+            percentage_max = max(percentage_max, discount["amount"])
+    result_price = base_price
+    result_price -= min(fixed_sum, base_price / 2)
+    result_price *= (100 - percentage_max) / 100
+    return result_price
 
 
 @shared_task
 def recalculate_items_price() -> None:
-    items_discounts = collect_items_discounts()
-    items = Items.objects.in_bulk(items_discounts.keys())
+    # Discounts and categories are small; items are read once and streamed in batches
+    discounts_by_category = _discounts_by_category()
+    ancestors = _category_ancestors()
+
     to_update = []
-    for item_id, discounts in items_discounts.items():
-        item = items[item_id]
-
-        fixed_sum = Decimal("0")
-        percentage_max = Decimal("0")
-
-        for discount in discounts:
-            if discount["type"] == "fixed":
-                fixed_sum += discount["amount"]
-            else:  # if discount["type"] == "percentage":
-                percentage_max = max(percentage_max, discount["amount"])
-        result_price = item.base_price
-        result_price -= min(fixed_sum, item.base_price / 2)
-        result_price *= (100 - percentage_max) / 100
-        item.price = result_price
+    items = Items.objects.only("id", "base_price", "category_id").iterator(chunk_size=BATCH_SIZE)
+    for item in items:
+        discounts = _item_discounts(item.category_id, ancestors, discounts_by_category)
+        item.price = calculate_price(item.base_price, discounts)
         to_update.append(item)
 
-    Items.objects.bulk_update(to_update, ["price"])
+        if len(to_update) >= BATCH_SIZE:
+            Items.objects.bulk_update(to_update, ["price"])
+            to_update = []
+
+    if to_update:
+        Items.objects.bulk_update(to_update, ["price"])

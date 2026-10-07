@@ -28,7 +28,6 @@ urlpatterns = [
     path("index", index_view, name="index"),
     path("api/v1/users/", include("users.urls_api")),
     path("users/", include("users.urls")),
-    # path("goods/", include("goods.urls")),
     path("api/v1/goods/", include("goods.urls_api")),
     path("api/v1/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

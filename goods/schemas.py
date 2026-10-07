@@ -10,6 +10,14 @@ class ResponseWrapper(BaseModel):
     data: Any = None
 
 
+_RESPONSE_DEFAULTS = ResponseWrapper().model_dump(exclude={"data"})
+
+
+def wrap_response(data: Any) -> dict[str, Any]:
+    """Same shape as ResponseWrapper(data=...).model_dump(), without pydantic walking the payload"""
+    return {**_RESPONSE_DEFAULTS, "data": data}
+
+
 class CategoryFilters(StrEnum):
     ID = "id"
     NAME = "name"
@@ -28,8 +36,3 @@ class ItemsFilters(StrEnum):
 
 class ItemsFields(BaseModel):
     items_fields: list[ItemsFilters]
-
-
-class OrderItemsSchema(BaseModel):
-    item: int
-    amount: int

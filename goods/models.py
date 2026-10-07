@@ -1,7 +1,5 @@
 from django.db import models
 
-# Create your models here.
-
 
 class Category(models.Model):
     name = models.CharField(max_length=20, unique=True)
@@ -22,6 +20,16 @@ class Orders(models.Model):
     price = models.DecimalField(decimal_places=2, max_digits=10)
     user = models.ForeignKey("users.CustomUser", on_delete=models.CASCADE)
 
+    class Meta:
+        indexes = [models.Index(fields=["user", "status"], name="orders_user_status_idx")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(status="Pending"),
+                name="orders_one_pending_per_user",
+            )
+        ]
+
 
 class Items(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
@@ -40,6 +48,11 @@ class OrderItems(models.Model):
     item = models.ForeignKey(Items, on_delete=models.CASCADE)
     amount = models.IntegerField()
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["order", "item"], name="orderitems_unique_order_item")
+        ]
+
 
 class Discounts(models.Model):
     class DiscountType(models.TextChoices):
@@ -51,3 +64,8 @@ class Discounts(models.Model):
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
     amount = models.DecimalField(decimal_places=2, max_digits=10)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["start_datetime", "end_datetime"], name="discounts_period_idx")
+        ]

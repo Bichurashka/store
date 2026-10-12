@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.serializers import Serializer
 
+from goods import cache
 from goods.models import Category, Items, OrderItems, Orders
 from goods.schemas import CategoryFields, ItemsFields
 from goods.serializers import (
@@ -32,20 +33,34 @@ CATEGORY_ALLOWED_SORTS = _allowed_sorts(Category)
 ITEMS_ALLOWED_SORTS = _allowed_sorts(Items)
 
 
-def paginate(queryset: QuerySet, request: Request) -> QuerySet:
-    """Apply optional ?limit=&offset= to the queryset; without limit the whole list is returned."""
+def _page_bounds(request: Request) -> tuple[int, int] | None:
+    """Parse optional ?limit=&offset= into (start, end); None means the whole list."""
     try:
         limit = int(request.GET["limit"])
     except (KeyError, ValueError):
-        return queryset
+        return None
     try:
         offset = int(request.GET.get("offset", 0))
     except ValueError:
         offset = 0
     limit = min(max(limit, 0), MAX_PAGE_LIMIT)
     offset = max(offset, 0)
-    end = offset + limit
-    return queryset[offset:end]
+    return offset, offset + limit
+
+
+def paginate(queryset: QuerySet, request: Request) -> QuerySet:
+    """Apply optional ?limit=&offset= to the queryset; without limit the whole list is returned."""
+    bounds = _page_bounds(request)
+    if bounds is None:
+        return queryset
+    start, end = bounds
+    return queryset[start:end]
+
+
+def page_cache_suffix(request: Request) -> str:
+    """Normalized page bounds, so equivalent ?limit=&offset= share one cache entry"""
+    bounds = _page_bounds(request)
+    return "all" if bounds is None else f"{bounds[0]}-{bounds[1]}"
 
 
 class CategoryServices:
@@ -87,9 +102,13 @@ class CategoryRequestsService:
             serializer = CategorySerializer(paginate(fields, request), many=True)
             return {"data": serializer.data, "status": status.HTTP_200_OK}
         else:
-            cat = Category.objects.filter(parent=None).order_by("id")
-            serializer = CategorySerializer(paginate(cat, request), many=True)
-            return {"data": serializer.data, "status": status.HTTP_200_OK}
+
+            def build() -> list:
+                cat = Category.objects.filter(parent=None).order_by("id")
+                return list(CategorySerializer(paginate(cat, request), many=True).data)
+
+            data = cache.get_or_build(cache.CATEGORIES, page_cache_suffix(request), build)
+            return {"data": data, "status": status.HTTP_200_OK}
 
     def category_post(self, request: Request) -> dict:
         serializer = CategoryCreationSerializer(data=request.data)
@@ -162,9 +181,13 @@ class ItemsRequestsServices:
             serializer = ItemsSerializer(paginate(fields, request), many=True)
             return {"data": serializer.data, "status": status.HTTP_200_OK}
         else:
-            items = Items.objects.all().order_by("id")
-            serializer = ItemsSerializer(paginate(items, request), many=True)
-            return {"data": serializer.data, "status": status.HTTP_200_OK}
+
+            def build() -> list:
+                items = Items.objects.all().order_by("id")
+                return list(ItemsSerializer(paginate(items, request), many=True).data)
+
+            data = cache.get_or_build(cache.ITEMS, page_cache_suffix(request), build)
+            return {"data": data, "status": status.HTTP_200_OK}
 
     def items_post(self, request: Request) -> dict:
         serializer = ItemsCreationSerializer(data=request.data)

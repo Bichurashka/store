@@ -4,6 +4,7 @@ from decimal import Decimal
 from celery import shared_task
 from django.utils import timezone
 
+from . import cache
 from .models import Category, Discounts, Items
 
 BATCH_SIZE = 1000
@@ -96,3 +97,5 @@ def recalculate_items_price() -> None:
 
     if to_update:
         Items.objects.bulk_update(to_update, ["price"])
+    # bulk_update sends no signals, so cached item lists must be dropped explicitly
+    cache.invalidate(cache.ITEMS)

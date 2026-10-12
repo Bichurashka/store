@@ -5,7 +5,8 @@ from django.db.models.functions import Coalesce
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from .models import OrderItems, Orders
+from . import cache
+from .models import Category, Items, OrderItems, Orders
 
 
 def recalculate_price(order_id: int) -> None:
@@ -35,3 +36,17 @@ def update_order_price(sender: Type[OrderItems], instance: OrderItems, **kwargs:
             instance.order.refresh_from_db(fields=["price"])
         except Orders.DoesNotExist:  # the order itself is being deleted (cascade)
             pass
+
+
+@receiver(post_save, sender=Category)
+@receiver(post_delete, sender=Category)
+def invalidate_category_cache(sender: Type[Category], **kwargs: Any) -> None:
+    cache.invalidate(cache.CATEGORIES)
+    # deleting a category nulls Items.category with a plain UPDATE, which sends no signals
+    cache.invalidate(cache.ITEMS)
+
+
+@receiver(post_save, sender=Items)
+@receiver(post_delete, sender=Items)
+def invalidate_items_cache(sender: Type[Items], **kwargs: Any) -> None:
+    cache.invalidate(cache.ITEMS)

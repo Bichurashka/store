@@ -5,18 +5,14 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
+from goods import cache
 from goods.models import Category, Items
 
 ITEMS_PER_PAGE = 30
 
 
-def index_view(request: WSGIRequest) -> HttpResponse:
-    context: dict[str, Any] = {}
-
-    # Categories -> context (whole tree with a single query)
+def _build_category_tree() -> list[dict[str, Any]]:
     categories = list(Category.objects.only("id", "name", "parent_id").order_by("id"))
-    if not categories:
-        raise Http404("No categories found")
     tree = []
     nodes: dict[int, dict[str, Any]] = {
         cat.pk: {"id": cat.pk, "name": cat.name, "children": []} for cat in categories
@@ -27,6 +23,16 @@ def index_view(request: WSGIRequest) -> HttpResponse:
             nodes[cat.parent_id]["children"].append(node)
         else:
             tree.append(node)
+    return tree
+
+
+def index_view(request: WSGIRequest) -> HttpResponse:
+    context: dict[str, Any] = {}
+
+    # Categories -> context (whole tree with a single query, cached between requests)
+    tree = cache.get_or_build(cache.CATEGORIES, "tree", _build_category_tree)
+    if not tree:
+        raise Http404("No categories found")
     context["categories"] = tree
 
     # Items by categories -> context

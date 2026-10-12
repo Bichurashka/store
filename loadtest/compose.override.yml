@@ -1,0 +1,9 @@
+# Used only for load testing the current build: separate volume and network, so the
+# dev database (aitesting_store_postgres_data) is not touched.
+networks:
+  postgres_scheduler:
+    name: aitesting_loadtest_net
+
+volumes:
+  store_postgres_data:
+    name: aitesting_loadtest_pgdata

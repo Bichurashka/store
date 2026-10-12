@@ -6,3 +6,12 @@ settings.json
 htmlcov
 .coverage
 .env
+# load test raw results (summary.md is kept)
+loadtest/results/*
+!loadtest/results/summary.md
+!loadtest/results/report.html
+!loadtest/results/notes.json
+
+# collectstatic output
+staticfiles/
+.lt-venv/
